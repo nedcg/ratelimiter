@@ -1,19 +1,29 @@
 package impl
 
-import "time"
-
-type ClockFunc func() time.Time
-type Key string
+import (
+	"github.com/nedcg/ratelimiter/pkg/config"
+	"time"
+)
 
 type TokenBucket struct {
 	tokens     int
 	bucketCap  int
 	refillRate int
 	lastRefill time.Time
-	clock      ClockFunc
+	clock      config.ClockFunc
 }
 
-func (tb *TokenBucket) Allow() bool {
+func NewTokenBucket(config config.ConfigParams) TokenBucket {
+	return TokenBucket{
+		tokens:     config.Tokens,
+		bucketCap:  config.Tokens,
+		refillRate: config.RefillRate,
+		lastRefill: config.Clock(),
+		clock:      config.Clock,
+	}
+}
+
+func (tb TokenBucket) Allow() bool {
 	// before leaking, try to refill the bucketCap
 	tb.refill()
 
@@ -26,7 +36,7 @@ func (tb *TokenBucket) Allow() bool {
 	return false
 }
 
-func (tb *TokenBucket) refill() {
+func (tb TokenBucket) refill() {
 	now := tb.clock()
 	elapsed := tb.clock().Sub(tb.lastRefill)
 
